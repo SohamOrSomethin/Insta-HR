@@ -1,4 +1,5 @@
-'use client'
+const fs = require('fs');
+const content = `'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -252,3 +253,6 @@ function ActionLink({ href, emoji, label }: { href: string; emoji: string; label
     </Link>
   )
 }
+`;
+fs.writeFileSync('src/app/dashboard/page.tsx', content);
+console.log('Dashboard page created successfully!');

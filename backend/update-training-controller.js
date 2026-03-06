@@ -1,4 +1,5 @@
-const { Training } = require('../models/index');
+const fs = require('fs');
+const content = `const { Training } = require('../models/index');
 
 exports.getAllCourses = async (req, res) => {
   try {
@@ -54,3 +55,6 @@ exports.getMyEnrollments = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+`;
+fs.writeFileSync('src/controllers/training.controller.js', content);
+console.log('Training controller updated!');

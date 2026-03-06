@@ -1,0 +1,1 @@
+const s = require('./src/config/database'); s.query('DROP TABLE IF EXISTS "Applications" CASCADE').then(() => { console.log('Applications table dropped'); process.exit(); }).catch(e => { console.error(e.message); process.exit(); })

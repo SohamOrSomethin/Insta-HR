@@ -5,6 +5,14 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
+
+/* ------------------ CREATE UPLOADS DIR ------------------ */
+const uploadsDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const emailService = require('./services/email/emailService');
 require('./models/index');
 const sequelize = require('./config/database');
@@ -14,6 +22,8 @@ const jobRoutes = require('./routes/job.routes');
 const applicationRoutes = require('./routes/application.routes');
 const trainingRoutes = require('./routes/training.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const employerRoutes = require('./routes/employer.routes');
+const adminRoutes = require('./routes/admin.routes');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
@@ -93,7 +103,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ------------------ STATIC FILES ------------------ */
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
 /* ------------------ ROUTES ------------------ */
 app.use('/api/v1/auth', authRoutes);
@@ -102,6 +112,8 @@ app.use('/api/v1/jobs', jobRoutes);
 app.use('/api/v1/applications', applicationRoutes);
 app.use('/api/v1/training', trainingRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/employer', employerRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 /* ------------------ HEALTH CHECK ------------------ */
 app.get('/', (req, res) => {
@@ -137,6 +149,8 @@ async function startServer() {
     console.log('✅ Database connected');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📁 Uploads folder: ${uploadsDir}`);
+      console.log(`📖 API Docs: http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);

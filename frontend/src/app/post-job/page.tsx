@@ -42,7 +42,7 @@ export default function PostJobPage() {
         },
         body: JSON.stringify({
           ...formData,
-          skills: formData.skills.split(',').map(s => s.trim()),
+          requiredSkills: formData.skills.split(',').map(s => s.trim()),
           experienceMin: Number(formData.experienceMin),
           experienceMax: Number(formData.experienceMax),
           salaryMin: Number(formData.salaryMin),
@@ -134,11 +134,11 @@ export default function PostJobPage() {
                     className='w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-blue-500 transition-all'
                   >
                     <option value=''>Select Type</option>
-                    <option value='Full-time'>Full-time</option>
-                    <option value='Part-time'>Part-time</option>
-                    <option value='Contract'>Contract</option>
-                    <option value='Remote'>Remote</option>
-                    <option value='Internship'>Internship</option>
+                    <option value='full-time'>Full-time</option>
+                    <option value='part-time'>Part-time</option>
+                    <option value='contract'>Contract</option>
+                    <option value='remote'>Remote</option>
+                    <option value='internship'>Internship</option>
                   </select>
                 </div>
               </div>

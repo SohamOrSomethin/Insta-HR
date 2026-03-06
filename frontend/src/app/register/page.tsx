@@ -7,7 +7,9 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'candidate'
+    role: 'candidate',
+    firstName: '',
+    lastName: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -33,7 +35,9 @@ export default function RegisterPage() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          role: formData.role
+          role: formData.role,
+          firstName: formData.firstName,
+          lastName: formData.lastName
         })
       })
 
@@ -42,7 +46,8 @@ export default function RegisterPage() {
       if (data.success) {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        window.location.href = '/dashboard'
+        // ✅ Goes to OTP verification, not dashboard directly
+        window.location.href = `/auth/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(formData.email)}`
       } else {
         setError(data.message)
       }
@@ -55,8 +60,6 @@ export default function RegisterPage() {
   return (
     <main className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4 pt-16'>
       <div className='w-full max-w-md'>
-
-        {/* Card */}
         <div className='bg-white rounded-2xl shadow-xl p-8'>
 
           {/* Logo */}
@@ -81,11 +84,9 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className='space-y-5'>
 
-            {/* Role Selection */}
+            {/* Role */}
             <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                I am a...
-              </label>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>I am a...</label>
               <select
                 name='role'
                 value={formData.role}
@@ -97,11 +98,35 @@ export default function RegisterPage() {
               </select>
             </div>
 
+            {/* First & Last Name */}
+            <div className='grid grid-cols-2 gap-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>First Name</label>
+                <input
+                  type='text'
+                  name='firstName'
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder='John'
+                  className='w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Last Name</label>
+                <input
+                  type='text'
+                  name='lastName'
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder='Doe'
+                  className='w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all'
+                />
+              </div>
+            </div>
+
             {/* Email */}
             <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                Email Address
-              </label>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Email Address</label>
               <input
                 type='email'
                 name='email'
@@ -115,9 +140,7 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                Password
-              </label>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Password</label>
               <input
                 type='password'
                 name='password'
@@ -131,9 +154,7 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                Confirm Password
-              </label>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Confirm Password</label>
               <input
                 type='password'
                 name='confirmPassword'
@@ -145,7 +166,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type='submit'
               disabled={loading}
@@ -156,7 +177,6 @@ export default function RegisterPage() {
 
           </form>
 
-          {/* Login Link */}
           <p className='text-center text-gray-500 text-sm mt-6'>
             Already have an account?{' '}
             <Link href='/login' className='text-blue-600 font-medium hover:underline'>

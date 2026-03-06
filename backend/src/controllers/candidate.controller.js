@@ -1,4 +1,5 @@
-const { CandidateProfile } = require('../models/index');
+const { CandidateProfile, Job } = require('../models/index');
+const axios = require('axios');
 
 // Get Profile
 exports.getProfile = async (req, res) => {
@@ -23,8 +24,6 @@ exports.getProfile = async (req, res) => {
 // Create Profile
 exports.createProfile = async (req, res) => {
   try {
-    console.log('Request body:', req.body);
-    
     const existing = await CandidateProfile.findOne({
       where: { userId: req.user.id }
     });
@@ -80,15 +79,13 @@ exports.updateProfile = async (req, res) => {
     }
 
     await profile.update(req.body);
-
     res.json({ success: true, data: profile });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
-
+// Upload Resume
 exports.uploadResume = async (req, res) => {
   try {
     if (!req.file) {
@@ -115,37 +112,52 @@ exports.uploadResume = async (req, res) => {
   }
 };
 
+// AI Match Candidates for a Job
 exports.getAIMatches = async (req, res) => {
   try {
-    const { jobId } = req.params
+    const { jobId } = req.params;
 
     // Get job details
-    const { Job } = require('../models/index')
-    const job = await Job.findByPk(jobId)
+    const job = await Job.findByPk(jobId);
     if (!job) {
-      return res.status(404).json({ success: false, message: 'Job not found' })
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
     }
 
     // Get all candidates with profiles
-    const { CandidateProfile } = require('../models/index')
-    const candidates = await CandidateProfile.findAll()
+    const candidates = await CandidateProfile.findAll();
 
-    // Call AI engine
-    const response = await fetch('http://localhost:8000/match-candidates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        job_skills: job.skills || [],
-        job_description: job.description,
-        job_experience_min: job.experienceMin || 0,
-        candidates: candidates.map(c => c.toJSON())
-      })
-    })
+    if (candidates.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No candidates found'
+      });
+    }
 
-    const data = await response.json()
-    res.json(data)
+    // Call AI engine using axios instead of fetch
+    const response = await axios.post('http://localhost:8000/match-candidates', {
+      job_skills: job.skills || [],
+      job_description: job.description,
+      job_experience_min: job.experienceMin || 0,
+      candidates: candidates.map(c => c.toJSON())
+    });
+
+    res.json({
+      success: true,
+      data: response.data
+    });
 
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message })
+    // AI engine is down or not running
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        success: false,
+        message: 'AI matching service is currently unavailable. Please try again later.'
+      });
+    }
+    res.status(500).json({ success: false, message: error.message });
   }
-}
+};

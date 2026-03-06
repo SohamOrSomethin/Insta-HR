@@ -1,4 +1,5 @@
-'use client'
+const fs = require('fs');
+const content = `'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
@@ -138,3 +139,6 @@ export default function Navbar() {
     </nav>
   )
 }
+`;
+fs.writeFileSync('src/components/Navbar.tsx', content);
+console.log('Navbar updated successfully!');

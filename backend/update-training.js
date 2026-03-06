@@ -1,4 +1,5 @@
-const { DataTypes } = require('sequelize');
+const fs = require('fs');
+const content = `const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const Training = sequelize.define('Training', {
@@ -71,3 +72,6 @@ const Training = sequelize.define('Training', {
 });
 
 module.exports = Training;
+`;
+fs.writeFileSync('src/models/Training.js', content);
+console.log('Training model updated!');

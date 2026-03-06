@@ -1,4 +1,5 @@
-'use client'
+const fs = require('fs');
+const content = `'use client'
 import { useState, useEffect } from 'react'
 
 interface Job {
@@ -268,3 +269,6 @@ export default function AdminPage() {
     </main>
   )
 }
+`;
+fs.writeFileSync('src/app/admin/page.tsx', content);
+console.log('Admin page created!');

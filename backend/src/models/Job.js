@@ -7,6 +7,10 @@ const Job = sequelize.define('Job', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  employerId: {
+    type: DataTypes.UUID,
+    allowNull: false
+  },
   title: {
     type: DataTypes.STRING,
     allowNull: false
@@ -15,51 +19,60 @@ const Job = sequelize.define('Job', {
     type: DataTypes.TEXT,
     allowNull: false
   },
-  skills: {
+  requiredSkills: {
     type: DataTypes.ARRAY(DataTypes.STRING),
     defaultValue: []
   },
-  industry: {
-    type: DataTypes.ENUM(
-      'Finance', 'Manufacturing', 'Pharma', 'Civil',
-      'Automation', 'Mechanical', 'Banking', 'IT',
-      'Healthcare', 'Logistics', 'Others'
-    ),
-    allowNull: false
-  },
-  jobType: {
-    type: DataTypes.ENUM(
-      'Full-time', 'Part-time', 'Contract', 'Remote', 'Internship'
-    )
-  },
-  experienceMin: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0
-  },
-  experienceMax: {
+  salaryMin: {
     type: DataTypes.INTEGER
   },
-  salaryMin: {
-    type: DataTypes.DECIMAL(12, 2)
-  },
   salaryMax: {
-    type: DataTypes.DECIMAL(12, 2)
+    type: DataTypes.INTEGER
+  },
+  experienceLevel: {
+    type: DataTypes.ENUM('fresher', 'junior', 'mid', 'senior', 'lead'),
+    defaultValue: 'fresher'
   },
   location: {
     type: DataTypes.STRING
   },
-  employerId: {
-    type: DataTypes.UUID,
+  isRemote: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  jobType: {
+    type: DataTypes.ENUM('full-time', 'part-time', 'contract', 'internship', 'remote'),
+    defaultValue: 'full-time'
+  },
+  industry: {
+    type: DataTypes.ENUM(
+      'IT', 'Finance', 'Banking', 'Healthcare', 'Manufacturing',
+      'Pharma', 'Civil', 'Automation', 'Mechanical', 'Logistics', 'Others'
+    ),
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('active', 'closed', 'draft'),
-    defaultValue: 'active'
+    type: DataTypes.ENUM('draft', 'pending', 'active', 'closed', 'rejected'),
+    defaultValue: 'active'   // admin must approve
   },
   isFeatured: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  applicationDeadline: {
+    type: DataTypes.DATE
+  },
+  totalApplications: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  views: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   }
+}, {
+  timestamps: true,
+  tableName: 'jobs'
 });
 
 module.exports = Job;

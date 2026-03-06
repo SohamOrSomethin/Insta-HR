@@ -113,3 +113,16 @@ exports.deleteJob = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Get Employer's Own Jobs
+exports.getMyJobs = async (req, res) => {
+  try {
+    const jobs = await Job.findAll({
+      where: { employerId: req.user.id },
+      order: [['createdAt', 'DESC']]
+    })
+    res.json({ success: true, data: jobs })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}

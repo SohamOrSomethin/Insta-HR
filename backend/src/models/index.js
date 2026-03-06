@@ -13,7 +13,7 @@ User.hasMany(Job, { foreignKey: 'employerId', as: 'jobs' });
 Job.belongsTo(User, { foreignKey: 'employerId', as: 'employer' });
 
 User.hasMany(Application, { foreignKey: 'candidateId', as: 'applications' });
-Application.belongsTo(User, { foreignKey: 'candidateId' });
+Application.belongsTo(User, { foreignKey: 'candidateId', as: 'candidate' });
 
 Job.hasMany(Application, { foreignKey: 'jobId', as: 'applications' });
 Application.belongsTo(Job, { foreignKey: 'jobId', as: 'Job' });
@@ -24,7 +24,7 @@ Training.belongsTo(User, { foreignKey: 'providerId' });
 // Sync all models with database
 const syncDatabase = async () => {
   try {
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log('✅ All tables created!');
   } catch (error) {
     console.error('❌ Table sync failed:', error.message);
