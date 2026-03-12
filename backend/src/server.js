@@ -107,10 +107,13 @@ app.use('/uploads', express.static(uploadsDir));
 
 /* ------------------ ROUTES ------------------ */
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/employers', require('./routes/employer.routes'));
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/jobs', jobRoutes);
 app.use('/api/v1/applications', applicationRoutes);
 app.use('/api/v1/training', trainingRoutes);
+app.use('/api/v1/ai', require('./routes/aiScreening.routes'));
+app.use('/api/v1/jobs-actions', require('./routes/savedJobs.routes'));
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/employer', employerRoutes);
 app.use('/api/v1/admin', adminRoutes);

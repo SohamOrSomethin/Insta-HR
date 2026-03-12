@@ -52,7 +52,10 @@ export default function Navbar() {
             <Link href="/subscription" className="hover:text-blue-600 transition-colors">Upgrade Plan</Link>
           )}
           {user?.role === 'candidate' && (
-            <Link href="/applications" className="hover:text-blue-600 transition-colors">My Applications</Link>
+            <>
+              <Link href="/applications" className="hover:text-blue-600 transition-colors">My Applications</Link>
+              <Link href="/saved-jobs" className="hover:text-blue-600 transition-colors">Saved Jobs</Link>
+            </>
           )}
           {!user && (
             <Link href="/subscription" className="hover:text-blue-600 transition-colors">Pricing</Link>
@@ -114,7 +117,10 @@ export default function Navbar() {
             <Link href="/subscription" className="text-gray-700 font-medium">Upgrade Plan</Link>
           )}
           {user?.role === 'candidate' && (
-            <Link href="/applications" className="text-gray-700 font-medium">My Applications</Link>
+            <>
+              <Link href="/applications" className="text-gray-700 font-medium">My Applications</Link>
+              <Link href="/saved-jobs" className="text-gray-700 font-medium">Saved Jobs</Link>
+            </>
           )}
           {!user && (
             <Link href="/subscription" className="text-gray-700 font-medium">Pricing</Link>

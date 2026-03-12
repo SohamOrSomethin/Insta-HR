@@ -4,6 +4,10 @@ const CandidateProfile = require('./CandidateProfile');
 const Job = require('./Job');
 const Application = require('./Application');
 const Training = require('./Training');
+const EmployerProfile = require('./EmployerProfile');
+const Payment = require('./Payment');
+const SavedJob = require('./SavedJob');
+const JobAlert = require('./JobAlert');
 
 // Associations
 User.hasOne(CandidateProfile, { foreignKey: 'userId', as: 'candidateProfile' });
@@ -33,4 +37,12 @@ const syncDatabase = async () => {
 
 syncDatabase();
 
-module.exports = { sequelize, User, CandidateProfile, Job, Application, Training };
+// Associations (defined after all models loaded)
+SavedJob.belongsTo(Job, { foreignKey: 'jobId', as: 'job', constraints: false });
+Job.hasMany(SavedJob, { foreignKey: 'jobId', constraints: false });
+
+module.exports = {
+  SavedJob,
+  JobAlert,
+  Payment,
+  EmployerProfile, sequelize, User, CandidateProfile, Job, Application, Training };

@@ -21,11 +21,46 @@ const JOB_TYPES = ['full-time','part-time','contract','internship','remote']
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set())
   const [keyword, setKeyword] = useState('')
   const [location, setLocation] = useState('')
   const [industry, setIndustry] = useState('')
   const [jobType, setJobType] = useState('')
   const [total, setTotal] = useState(0)
+
+  const fetchSavedJobIds = async () => {
+    const token = localStorage.getItem('token')
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!token || user.role !== 'candidate') return
+    try {
+      const res = await fetch('http://localhost:5000/api/v1/jobs-actions/saved', {
+        headers: { Authorization: 'Bearer ' + token }
+      })
+      const data = await res.json()
+      if (data.success) setSavedJobIds(new Set(data.data.map((s: any) => s.jobId)))
+    } catch {}
+  }
+
+  const toggleSave = async (e: React.MouseEvent, jobId: number) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const token = localStorage.getItem('token')
+    if (!token) { window.location.href = '/login'; return }
+    try {
+      const res = await fetch('http://localhost:5000/api/v1/jobs-actions/save/' + jobId, {
+        method: 'POST', headers: { Authorization: 'Bearer ' + token }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSavedJobIds(prev => {
+          const next = new Set(prev)
+          if (data.saved) next.add(jobId)
+          else next.delete(jobId)
+          return next
+        })
+      }
+    } catch {}
+  }
 
   const fetchJobs = async () => {
     setLoading(true)
@@ -48,7 +83,8 @@ export default function JobsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchJobs() }, [])
+  useEffect(() => { fetchJobs()
+    fetchSavedJobIds() }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

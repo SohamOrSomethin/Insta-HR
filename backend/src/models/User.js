@@ -41,6 +41,9 @@ const User = sequelize.define('User', {
   lastLogin: {
     type: DataTypes.DATE
   },
+  subscriptionExpiry: {
+    type: DataTypes.DATE,
+  },
   subscriptionPlan: {
     type: DataTypes.STRING,   // ← use STRING instead of ENUM to avoid alter issues
     allowNull: true

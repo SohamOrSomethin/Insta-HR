@@ -1,3 +1,4 @@
+const { sendJobAlertEmails } = require('./savedJobs.controller');
 const { Job } = require('../models/index');
 const { Op } = require('sequelize');
 
@@ -10,6 +11,8 @@ exports.createJob = async (req, res) => {
     });
 
     res.status(201).json({ success: true, data: job });
+    // Send job alert emails in background
+    sendJobAlertEmails(job).catch(console.error);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

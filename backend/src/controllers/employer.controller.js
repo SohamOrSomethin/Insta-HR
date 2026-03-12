@@ -1,71 +1,95 @@
-const { Job, Application, User, CandidateProfile } = require('../models/index');
+const { EmployerProfile } = require('../models/index');
+const { cloudinary } = require('../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
 
-exports.getMyJobs = async (req, res) => {
+// Cloudinary storage for logos
+const logoStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'instahire/logos',
+    resource_type: 'image',
+    transformation: [{ width: 300, height: 300, crop: 'fit' }]
+  }
+});
+
+exports.uploadLogoMiddleware = multer({
+  storage: logoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }
+}).single('logo');
+
+// GET profile
+exports.getProfile = async (req, res) => {
   try {
-    const jobs = await Job.findAll({
-      where: { employerId: req.user.id },
-      order: [['createdAt', 'DESC']]
-    });
-    res.json({ success: true, data: jobs });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const profile = await EmployerProfile.findOne({ where: { userId: req.user.id } });
+    if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
+    res.json({ success: true, data: profile });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-exports.getJobApplications = async (req, res) => {
+// GET public profile by userId (for candidates viewing company)
+exports.getPublicProfile = async (req, res) => {
   try {
-    const job = await Job.findOne({
-      where: { id: req.params.jobId, employerId: req.user.id }
-    });
-    if (!job) {
-      return res.status(404).json({ success: false, message: 'Job not found or unauthorized' });
-    }
-    const applications = await Application.findAll({
-      where: { jobId: req.params.jobId },
-      include: [
-        {
-          model: User,
-          as: 'candidate',
-          attributes: ['id', 'email', 'firstName', 'lastName', 'phone'],
-          include: [
-            {
-              model: CandidateProfile,
-              as: 'candidateProfile',
-              attributes: ['headline', 'skills', 'yearsOfExperience', 'currentLocation', 'resumeUrl']
-            }
-          ]
-        }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-    res.json({ success: true, data: applications });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const profile = await EmployerProfile.findOne({ where: { userId: req.params.userId } });
+    if (!profile) return res.status(404).json({ success: false, message: 'Company profile not found' });
+    res.json({ success: true, data: profile });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-exports.updateApplicationStatus = async (req, res) => {
+// CREATE or UPDATE profile
+exports.upsertProfile = async (req, res) => {
   try {
-    const { status, interviewDate } = req.body;
-    const application = await Application.findByPk(req.params.id, {
-      include: [{ model: Job, as: 'Job' }]
-    });
-    if (!application) {
-      return res.status(404).json({ success: false, message: 'Application not found' });
+    let profile = await EmployerProfile.findOne({ where: { userId: req.user.id } });
+    if (!profile) {
+      profile = await EmployerProfile.create({ ...req.body, userId: req.user.id });
+    } else {
+      await profile.update(req.body);
     }
-    if (application.Job.employerId !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    res.json({ success: true, data: profile });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// UPLOAD LOGO
+exports.uploadLogo = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+    let profile = await EmployerProfile.findOne({ where: { userId: req.user.id } });
+    if (!profile) return res.status(404).json({ success: false, message: 'Create company profile first' });
+    // Delete old logo
+    if (profile.logoPublicId) {
+      await cloudinary.uploader.destroy(profile.logoPublicId);
     }
-    const validStatuses = ['applied', 'shortlisted', 'interview_scheduled', 'hired', 'rejected'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status' });
-    }
-    await application.update({
-      status,
-      ...(interviewDate && { interviewDate })
-    });
-    res.json({ success: true, data: application });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    await profile.update({ logoUrl: req.file.path, logoPublicId: req.file.filename });
+    res.json({ success: true, message: 'Logo uploaded!', logoUrl: req.file.path });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Admin: get all employer profiles
+exports.getAllProfiles = async (req, res) => {
+  try {
+    const profiles = await EmployerProfile.findAll({ order: [['createdAt', 'DESC']] });
+    res.json({ success: true, data: profiles });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Admin: verify employer
+exports.verifyEmployer = async (req, res) => {
+  try {
+    const profile = await EmployerProfile.findOne({ where: { userId: req.params.userId } });
+    if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
+    await profile.update({ isVerified: true });
+    res.json({ success: true, message: 'Employer verified!' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
