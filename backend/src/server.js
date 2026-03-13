@@ -22,7 +22,6 @@ const jobRoutes = require('./routes/job.routes');
 const applicationRoutes = require('./routes/application.routes');
 const trainingRoutes = require('./routes/training.routes');
 const paymentRoutes = require('./routes/payment.routes');
-const employerRoutes = require('./routes/employer.routes');
 const adminRoutes = require('./routes/admin.routes');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
@@ -32,8 +31,15 @@ const app = express();
 /* ------------------ SECURITY ------------------ */
 app.disable('x-powered-by');
 app.use(helmet());
+
+// Fix: validate FRONTEND_URL is set; fall back only in development
+const allowedOrigin = process.env.FRONTEND_URL;
+if (!allowedOrigin && process.env.NODE_ENV === 'production') {
+  console.error('❌ FATAL: FRONTEND_URL env variable is not set in production!');
+  process.exit(1);
+}
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigin || 'http://localhost:3000',
   credentials: true
 }));
 
@@ -43,50 +49,28 @@ const apiLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'Too many requests, please try again later.'
-  }
+  message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: {
-    success: false,
-    message: 'Too many login attempts, please try again later.'
-  }
+  message: { success: false, message: 'Too many login attempts, please try again later.' }
 });
 
 /* ------------------ SWAGGER ------------------ */
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
-    info: {
-      title: 'InstaHire API',
-      version: '1.0.0',
-      description: 'AI-Powered Job Portal API Documentation'
-    },
-    servers: [
-      {
-        url: 'http://localhost:5000',
-        description: 'Development server'
-      }
-    ],
+    info: { title: 'InstaHire API', version: '1.0.0', description: 'AI-Powered Job Portal API Documentation' },
+    servers: [{ url: 'http://localhost:5000', description: 'Development server' }],
     components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
-      }
+      securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }
     },
     security: [{ bearerAuth: [] }]
   },
   apis: ['./src/routes/*.js']
 };
-
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { background: linear-gradient(135deg, #2563eb, #9333ea); }',
@@ -107,7 +91,6 @@ app.use('/uploads', express.static(uploadsDir));
 
 /* ------------------ ROUTES ------------------ */
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/employers', require('./routes/employer.routes'));
 app.use('/api/v1/candidates', candidateRoutes);
 app.use('/api/v1/jobs', jobRoutes);
 app.use('/api/v1/applications', applicationRoutes);
@@ -115,23 +98,19 @@ app.use('/api/v1/training', trainingRoutes);
 app.use('/api/v1/ai', require('./routes/aiScreening.routes'));
 app.use('/api/v1/jobs-actions', require('./routes/savedJobs.routes'));
 app.use('/api/v1/payments', paymentRoutes);
-app.use('/api/v1/employer', employerRoutes);
+// Fix: removed duplicate employer route (/api/v1/employers AND /api/v1/employer).
+// Using a single canonical route: /api/v1/employers
+app.use('/api/v1/employers', require('./routes/employer.routes'));
 app.use('/api/v1/admin', adminRoutes);
 
 /* ------------------ HEALTH CHECK ------------------ */
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'InstaHire API is running 🚀'
-  });
+  res.json({ success: true, message: 'InstaHire API is running 🚀' });
 });
 
 /* ------------------ 404 HANDLER ------------------ */
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
 /* ------------------ GLOBAL ERROR HANDLER ------------------ */

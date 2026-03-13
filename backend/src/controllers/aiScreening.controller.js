@@ -37,10 +37,13 @@ function keywordScore(jobDescription = '', candidateProfile = {}) {
     (candidateProfile.summary || '') + ' ' +
     (candidateProfile.headline || '') + ' ' +
     ((candidateProfile.skills || []).join(' ')) + ' ' +
-    ((candidateProfile.experience || []).map(e => (e.title || '') + ' ' + (e.company || '') + ' ' + (e.description || '')).join(' '))
+    ((candidateProfile.experience || []).map(e =>
+      (e.title || '') + ' ' + (e.company || '') + ' ' + (e.description || '')
+    ).join(' '))
   ).toLowerCase();
 
   const stopWords = new Set(['the','a','an','and','or','in','on','at','to','for','of','with','is','are','be','will','can','has','have','that','this','from','by','as','we','you','your','our','their']);
+  // Fixed: was /\\W+/ (double-escaped) — corrected to /\W+/
   const keywords = jobDescription.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !stopWords.has(w));
   const uniqueKw = [...new Set(keywords)];
   if (!uniqueKw.length) return 50;
@@ -72,29 +75,29 @@ exports.screenCandidates = async (req, res) => {
     const job = await Job.findByPk(jobId);
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
-    // Authorization: admin can screen any job, employer can screen their own
-    // Check both userId and employerId fields (different setups use different names)
-    const jobOwnerId = job.userId || job.employerId || job.createdBy;
-    console.log('Auth check - job owner:', jobOwnerId, '| req.user.id:', req.user.id, '| role:', req.user.role);
-    if (req.user.role !== 'admin' && String(jobOwnerId) !== String(req.user.id)) {
-      console.log('Auth FAILED - job does not belong to this employer');
-      return res.status(403).json({ success: false, message: 'Not authorized - this job does not belong to you' });
+    // Fix: use the correct foreign key (employerId) consistent with models/index.js
+    if (req.user.role !== 'admin' && String(job.employerId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized — this job does not belong to you' });
     }
 
     const applications = await Application.findAll({
       where: { jobId },
-      include: [{ model: User, as: 'candidate', attributes: ['id', 'email'] }]
+      include: [{ model: User, as: 'candidate', attributes: ['id', 'name', 'email'] }]
     });
 
     if (!applications.length) {
-      return res.json({ success: true, data: [], message: 'No applications yet', summary: {
-        total: 0, excellent: 0, good: 0, partial: 0, low: 0, avgScore: 0,
-        jobTitle: job.title, jobSkills: job.skills || [], jobExpMin: job.experienceMin || 0
-      }});
+      return res.json({
+        success: true, data: [], message: 'No applications yet',
+        summary: {
+          total: 0, excellent: 0, good: 0, partial: 0, low: 0, avgScore: 0,
+          jobTitle: job.title, jobSkills: job.skills || [], jobExpMin: job.experienceMin || 0
+        }
+      });
     }
 
-    const userIds = applications.map(a => a.userId);
-    const profiles = await CandidateProfile.findAll({ where: { userId: userIds } });
+    // Fix: use candidateId (correct FK from Application model and models/index.js)
+    const candidateIds = applications.map(a => a.candidateId);
+    const profiles = await CandidateProfile.findAll({ where: { userId: candidateIds } });
     const profileMap = {};
     profiles.forEach(p => { profileMap[p.userId] = p; });
 
@@ -102,7 +105,8 @@ exports.screenCandidates = async (req, res) => {
     const jobSkills = job.skills || [];
 
     const results = applications.map(app => {
-      const profile = profileMap[app.userId] || {};
+      // Fix: use candidateId consistently
+      const profile = profileMap[app.candidateId] || {};
       const user = app.candidate || {};
       const profileData = profile.toJSON ? profile.toJSON() : profile;
 
@@ -116,9 +120,9 @@ exports.screenCandidates = async (req, res) => {
 
       return {
         applicationId: app.id,
-        applicationStatus: app.status || 'pending',
-        userId: app.userId,
-        name: user.email ? user.email.split('@')[0] : 'Unknown',
+        applicationStatus: app.status || 'applied',
+        candidateId: app.candidateId,
+        name: user.name || (user.email ? user.email.split('@')[0] : 'Unknown'),
         email: user.email || '',
         photoUrl: profileData.photoUrl || null,
         headline: profileData.headline || '',
@@ -159,8 +163,22 @@ exports.updateApplicationStatus = async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { status } = req.body;
-    const app = await Application.findByPk(applicationId);
+
+    const validStatuses = ['applied', 'shortlisted', 'interview_scheduled', 'rejected', 'hired'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid or missing status value' });
+    }
+
+    const app = await Application.findByPk(applicationId, {
+      include: [{ model: Job, as: 'Job', attributes: ['employerId'] }]
+    });
     if (!app) return res.status(404).json({ success: false, message: 'Application not found' });
+
+    // Fix: verify the requesting employer owns the job this application belongs to
+    if (req.user.role !== 'admin' && String(app.Job.employerId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this application' });
+    }
+
     await app.update({ status });
     res.json({ success: true, message: 'Status updated', data: app });
   } catch (error) {
