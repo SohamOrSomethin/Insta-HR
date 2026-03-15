@@ -1,9 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function VerifyOTPPage() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
+function VerifyOTPContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const userId = searchParams.get('userId')
@@ -19,19 +21,15 @@ export default function VerifyOTPPage() {
       setError('Please enter a valid 6-digit OTP')
       return
     }
-
     setLoading(true)
     setError('')
-
     try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/verify-otp', {
+      const res = await fetch(`${API_URL}/api/v1/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, otp })
       })
-
       const data = await res.json()
-
       if (data.success) {
         setSuccess('Email verified successfully! Redirecting...')
         localStorage.setItem('token', data.token)
@@ -39,7 +37,7 @@ export default function VerifyOTPPage() {
       } else {
         setError(data.message || 'Invalid OTP')
       }
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
@@ -50,7 +48,7 @@ export default function VerifyOTPPage() {
     setError('')
     setSuccess('')
     try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/resend-otp', {
+      const res = await fetch(`${API_URL}/api/v1/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
@@ -60,7 +58,7 @@ export default function VerifyOTPPage() {
         setSuccess('New OTP sent to your email!')
         setTimeout(() => setSuccess(''), 3000)
       }
-    } catch (err) {
+    } catch {
       setError('Failed to resend OTP')
     }
   }
@@ -68,8 +66,6 @@ export default function VerifyOTPPage() {
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4'>
       <div className='bg-white rounded-2xl shadow-xl p-8 w-full max-w-md'>
-
-        {/* Header */}
         <div className='text-center mb-8'>
           <div className='w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4'>
             <span className='text-3xl'>📧</span>
@@ -80,12 +76,8 @@ export default function VerifyOTPPage() {
             <span className='font-semibold text-blue-600'>{email || 'your email'}</span>
           </p>
         </div>
-
-        {/* OTP Input */}
         <div className='mb-6'>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Enter OTP
-          </label>
+          <label className='block text-sm font-medium text-gray-700 mb-2'>Enter OTP</label>
           <input
             type='text'
             maxLength={6}
@@ -95,20 +87,12 @@ export default function VerifyOTPPage() {
             className='w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-2xl font-bold tracking-widest focus:border-blue-500 focus:outline-none'
           />
         </div>
-
-        {/* Error / Success */}
         {error && (
-          <div className='mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm'>
-            {error}
-          </div>
+          <div className='mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm'>{error}</div>
         )}
         {success && (
-          <div className='mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm'>
-            {success}
-          </div>
+          <div className='mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm'>{success}</div>
         )}
-
-        {/* Verify Button */}
         <button
           onClick={handleVerify}
           disabled={loading}
@@ -116,28 +100,32 @@ export default function VerifyOTPPage() {
         >
           {loading ? 'Verifying...' : 'Verify Email'}
         </button>
-
-        {/* Resend */}
         <div className='text-center mt-4'>
           <p className='text-gray-500 text-sm'>
-            Didn't receive the OTP?{' '}
-            <button
-              onClick={handleResend}
-              className='text-blue-600 font-semibold hover:underline'
-            >
+            Didn&apos;t receive the OTP?{' '}
+            <button onClick={handleResend} className='text-blue-600 font-semibold hover:underline'>
               Resend OTP
             </button>
           </p>
         </div>
-
-        {/* Back to login */}
         <div className='text-center mt-4'>
           <Link href='/auth/login' className='text-gray-400 text-sm hover:text-gray-600'>
             ← Back to Login
           </Link>
         </div>
-
       </div>
     </div>
+  )
+}
+
+export default function VerifyOTPPage() {
+  return (
+    <Suspense fallback={
+      <div className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center'>
+        <p className='text-gray-400'>Loading...</p>
+      </div>
+    }>
+      <VerifyOTPContent />
+    </Suspense>
   )
 }
