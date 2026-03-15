@@ -1,19 +1,23 @@
 const nodemailer = require('nodemailer');
 
+// Port 465 (SSL) is blocked on Render free tier — use 587 (STARTTLS) instead
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false, // STARTTLS — upgrades after connection
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
 async function verifySMTP() {
   try {
     await transporter.verify();
-    console.log('✅ SMTP server ready (Gmail)');
+    console.log('✅ SMTP server ready (Gmail port 587)');
   } catch (err) {
     console.error('❌ SMTP connection failed:', err.message);
   }
