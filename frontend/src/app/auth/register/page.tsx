@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import API_URL from '@/lib/api'
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -30,14 +32,13 @@ export default function RegisterPage() {
     }
     setLoading(true)
 
-    // Show wakeup hint after 4 seconds if still waiting
     const hintTimer = setTimeout(() => {
       setStatusMsg('⏳ Waking up the server (free tier) — this can take up to 30 seconds...')
     }, 4000)
 
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s max
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
 
       const res = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: 'POST',
@@ -54,8 +55,11 @@ export default function RegisterPage() {
       clearTimeout(timeoutId)
       const data = await res.json()
       if (data.success) {
+        // Save token and redirect directly to dashboard
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
         setStatusMsg('✅ Account created! Redirecting...')
-        window.location.href = `/auth/verify-otp?userId=${data.userId}&email=${formData.email}`
+        router.push(data.user.role === 'employer' ? '/employer/dashboard' : '/candidate/dashboard')
       } else {
         setError(data.message || 'Registration failed')
       }

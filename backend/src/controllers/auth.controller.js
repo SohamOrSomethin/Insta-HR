@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User, CandidateProfile } = require('../models/index');
-const emailService = require('../services/email/emailService');
 
 const VALID_ROLES = ['candidate', 'employer'];
 
@@ -11,7 +10,7 @@ const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn });
 };
 
-// Register
+// Register — auto-verify, no OTP needed
 exports.register = async (req, res) => {
   try {
     const { email, password, phone, role, firstName, lastName } = req.body;
@@ -20,7 +19,6 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'email, password and role are required' });
     }
 
-    // Prevent self-assigning admin role
     if (!VALID_ROLES.includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role. Must be candidate or employer' });
     }
@@ -30,9 +28,6 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already in use' });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await User.create({
@@ -40,8 +35,7 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       phone,
       role,
-      otp,
-      otpExpiry
+      isEmailVerified: true  // auto-verify — OTP disabled temporarily
     });
 
     if (role === 'candidate' && firstName) {
@@ -52,50 +46,12 @@ exports.register = async (req, res) => {
       });
     }
 
-    await emailService.sendOTPEmail(email, otp);
-    await emailService.sendWelcomeEmail(email, firstName || email);
-
-    // Do NOT issue a token here — require OTP verification first
-    res.status(201).json({
-      success: true,
-      message: 'Account created! Please verify your email with the OTP sent.',
-      userId: user.id
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Verify OTP
-exports.verifyOTP = async (req, res) => {
-  try {
-    const { userId, otp } = req.body;
-
-    if (!userId || !otp) {
-      return res.status(400).json({ success: false, message: 'userId and otp are required' });
-    }
-
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    if (user.otpExpiry < new Date()) {
-      return res.status(400).json({ success: false, message: 'OTP has expired' });
-    }
-
-    if (user.otp !== otp) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    await user.update({ isEmailVerified: true, otp: null, otpExpiry: null });
-
-    // Token is issued only after successful OTP verification
+    // Issue token immediately after registration
     const token = signToken(user.id);
 
-    res.json({
+    res.status(201).json({
       success: true,
-      message: 'Email verified successfully!',
+      message: 'Account created successfully!',
       token,
       user: { id: user.id, email: user.email, role: user.role }
     });
@@ -104,33 +60,17 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
-// Resend OTP
-exports.resendOTP = async (req, res) => {
-  try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'userId is required' });
-    }
-
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    await user.update({ otp, otpExpiry });
-    await emailService.sendOTPEmail(user.email, otp);
-
-    res.json({ success: true, message: 'OTP resent successfully!' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+// verifyOTP — kept as stub so existing routes don't break
+exports.verifyOTP = async (req, res) => {
+  res.json({ success: true, message: 'Email verification is currently disabled.' });
 };
 
-// Login — only allow verified users
+// resendOTP — kept as stub
+exports.resendOTP = async (req, res) => {
+  res.json({ success: true, message: 'Email verification is currently disabled.' });
+};
+
+// Login
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -147,14 +87,6 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        success: false,
-        message: 'Please verify your email before logging in',
-        userId: user.id
-      });
     }
 
     await user.update({ lastLogin: new Date() });
