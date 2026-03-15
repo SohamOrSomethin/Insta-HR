@@ -1,14 +1,18 @@
 const nodemailer = require('nodemailer');
 
+// Use explicit SMTP config instead of 'service: gmail'
+// Railway blocks IPv6 to port 465 — force port 587 + IPv4
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // TLS on port 587
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
-  }
+  },
+  family: 4 // Force IPv4 — fixes Railway ENETUNREACH on IPv6
 });
 
-/* -------------------- VERIFY SMTP -------------------- */
 async function verifySMTP() {
   try {
     await transporter.verify();
@@ -20,11 +24,10 @@ async function verifySMTP() {
 
 verifySMTP();
 
-/* -------------------- CORE MAIL FUNCTION -------------------- */
 async function sendMail(options) {
   try {
     const info = await transporter.sendMail({
-      from: `"InstaHire" <${process.env.EMAIL_FROM}>`,
+      from: `"InstaHire" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
       ...options
     });
     console.log(`📧 Email sent: ${info.messageId}`);
@@ -35,7 +38,6 @@ async function sendMail(options) {
   }
 }
 
-/* -------------------- OTP EMAIL -------------------- */
 exports.sendOTPEmail = async (email, otp) => {
   return sendMail({
     to: email,
@@ -59,7 +61,6 @@ exports.sendOTPEmail = async (email, otp) => {
   });
 };
 
-/* -------------------- WELCOME EMAIL -------------------- */
 exports.sendWelcomeEmail = async (email, name) => {
   return sendMail({
     to: email,
@@ -83,7 +84,6 @@ exports.sendWelcomeEmail = async (email, name) => {
   });
 };
 
-/* -------------------- APPLICATION EMAIL -------------------- */
 exports.sendApplicationEmail = async (email, jobTitle) => {
   return sendMail({
     to: email,
@@ -107,7 +107,6 @@ exports.sendApplicationEmail = async (email, jobTitle) => {
   });
 };
 
-/* -------------------- INTERVIEW EMAIL -------------------- */
 exports.sendInterviewInvite = async (email, details) => {
   return sendMail({
     to: email,
@@ -125,23 +124,19 @@ exports.sendInterviewInvite = async (email, details) => {
             <p style="color: #64748b; margin: 4px 0;"><strong>Type:</strong> ${details.type || 'In-person'}</p>
             ${details.notes ? `<p style="color: #64748b; margin: 4px 0;"><strong>Notes:</strong> ${details.notes}</p>` : ''}
           </div>
-          <p style="color: #94a3b8; font-size: 13px;">Please be on time. All the best!</p>
         </div>
       </div>
     `
   });
 };
 
-/* -------------------- STATUS EMAIL -------------------- */
 exports.sendStatusUpdate = async (email, jobTitle, status) => {
   const statusMessages = {
     shortlisted: { emoji: '⭐', text: 'You have been shortlisted!', color: '#f59e0b' },
     hired: { emoji: '🎉', text: 'Congratulations! You are hired!', color: '#10b981' },
     rejected: { emoji: '❌', text: 'Your application was not selected.', color: '#ef4444' }
   };
-
   const statusInfo = statusMessages[status] || { emoji: '📋', text: `Status updated to ${status}`, color: '#2563eb' };
-
   return sendMail({
     to: email,
     subject: `Application Update - ${jobTitle}`,

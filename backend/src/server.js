@@ -29,14 +29,12 @@ const swaggerUi = require('swagger-ui-express');
 const app = express();
 
 /* ------------------ TRUST PROXY (required for Railway) ------------------ */
-// Railway sits behind a load balancer — this fixes express-rate-limit and req.ip
 app.set('trust proxy', 1);
 
 /* ------------------ SECURITY ------------------ */
 app.disable('x-powered-by');
 app.use(helmet());
 
-// Strip trailing slash from FRONTEND_URL if present
 const rawFrontend = process.env.FRONTEND_URL || 'http://localhost:3000';
 const FRONTEND_URL = rawFrontend.replace(/\/$/, '');
 
@@ -62,15 +60,18 @@ app.use(cors({
 /* ------------------ RATE LIMITING ------------------ */
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
+// Generous limit during development/testing
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'Too many login attempts, please try again later.' }
 });
 
@@ -140,7 +141,6 @@ async function startServer() {
     console.log('✅ Models synced');
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
-    // Do NOT exit — keep server alive so Railway doesn't 502
   }
 
   app.listen(PORT, () => {
