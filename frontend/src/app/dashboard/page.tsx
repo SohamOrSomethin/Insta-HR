@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import API_URL from '@/lib/api'
 
 interface User {
   email: string
@@ -32,19 +33,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const userData = localStorage.getItem('user')
     const token = localStorage.getItem('token')
-
-    if (!userData || !token) {
-      router.replace('/login')
-      return
-    }
-
+    if (!userData || !token) { router.replace('/login'); return }
     const parsedUser: User = JSON.parse(userData)
-
-    if (parsedUser.role === 'admin') {
-      router.replace('/admin')
-      return
-    }
-
+    if (parsedUser.role === 'admin') { router.replace('/admin'); return }
     setUser(parsedUser)
     fetchStats(parsedUser.role, token)
   }, [router])
@@ -52,7 +43,7 @@ export default function DashboardPage() {
   const fetchStats = async (role: string, token: string) => {
     try {
       if (role === 'candidate') {
-        const res = await fetch('http://localhost:5000/api/v1/applications/my', {
+        const res = await fetch(`${API_URL}/api/v1/applications/my`, {
           headers: { Authorization: 'Bearer ' + token }
         })
         const data = await res.json()
@@ -66,29 +57,21 @@ export default function DashboardPage() {
           })
         }
       } else if (role === 'employer') {
-        const [jobsRes, appsRes] = await Promise.all([
-          fetch('http://localhost:5000/api/v1/employer/jobs', {
-            headers: { Authorization: 'Bearer ' + token }
-          }),
-          fetch('http://localhost:5000/api/v1/employer/jobs', {
-            headers: { Authorization: 'Bearer ' + token }
-          })
-        ])
-        const jobsData = await jobsRes.json()
-        if (jobsData.success) {
-          const jobs = jobsData.data
-          const totalApplications = jobs.reduce((sum: number, j: any) => sum + (j.totalApplications || 0), 0)
+        const res = await fetch(`${API_URL}/api/v1/employer/jobs`, {
+          headers: { Authorization: 'Bearer ' + token }
+        })
+        const data = await res.json()
+        if (data.success) {
+          const jobs = data.data
           setEmployerStats({
             totalJobs: jobs.length,
-            totalApplications,
+            totalApplications: jobs.reduce((sum: number, j: any) => sum + (j.totalApplications || 0), 0),
             shortlisted: 0,
             hired: 0,
           })
         }
       }
-    } catch (err) {
-      console.error(err)
-    }
+    } catch (err) { console.error(err) }
     setLoading(false)
   }
 
@@ -98,29 +81,21 @@ export default function DashboardPage() {
     router.replace('/')
   }
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-gray-50 pt-24 flex items-center justify-center">
-        <p className="text-gray-400">Loading dashboard...</p>
-      </main>
-    )
-  }
+  if (loading) return (
+    <main className="min-h-screen bg-gray-50 pt-24 flex items-center justify-center">
+      <p className="text-gray-400">Loading dashboard...</p>
+    </main>
+  )
 
   if (!user) return null
 
   return (
     <main className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-6 py-10">
-
-        {/* Welcome Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white mb-8">
           <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
-          <p className="text-blue-100">
-            {user.email} — {user.role === 'candidate' ? 'Job Seeker' : 'Employer'}
-          </p>
+          <p className="text-blue-100">{user.email} — {user.role === 'candidate' ? 'Job Seeker' : 'Employer'}</p>
         </div>
-
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           {user.role === 'candidate' ? (
             <>
@@ -138,8 +113,6 @@ export default function DashboardPage() {
             </>
           )}
         </div>
-
-        {/* Quick Actions */}
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -160,8 +133,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* Recent Activity */}
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             {user.role === 'candidate' ? 'Your Application Status' : 'Hiring Overview'}
@@ -180,19 +151,14 @@ export default function DashboardPage() {
                     <span className="font-medium text-gray-900">{value}</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div
-                      className={"h-2 rounded-full " + color}
-                      style={{ width: total > 0 ? (value / total * 100) + "%" : "0%" }}
-                    />
+                    <div className={"h-2 rounded-full " + color} style={{ width: total > 0 ? (value / total * 100) + "%" : "0%" }} />
                   </div>
                 </div>
               ))}
               {candidateStats.totalApplied === 0 && (
                 <div className="text-center py-6">
                   <p className="text-gray-400 mb-3">You have not applied to any jobs yet</p>
-                  <Link href="/jobs" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
-                    Browse Jobs
-                  </Link>
+                  <Link href="/jobs" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Browse Jobs</Link>
                 </div>
               )}
             </div>
@@ -210,23 +176,13 @@ export default function DashboardPage() {
               {employerStats.totalJobs === 0 && (
                 <div className="col-span-2 text-center py-4">
                   <p className="text-gray-400 mb-3">You have not posted any jobs yet</p>
-                  <Link href="/post-job" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
-                    Post Your First Job
-                  </Link>
+                  <Link href="/post-job" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Post Your First Job</Link>
                 </div>
               )}
             </div>
           )}
         </div>
-
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="px-6 py-3 bg-red-50 text-red-600 font-medium rounded-xl hover:bg-red-100 transition-colors"
-        >
-          Logout
-        </button>
-
+        <button onClick={handleLogout} className="px-6 py-3 bg-red-50 text-red-600 font-medium rounded-xl hover:bg-red-100 transition-colors">Logout</button>
       </div>
     </main>
   )
@@ -243,10 +199,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
 
 function ActionLink({ href, emoji, label }: { href: string; emoji: string; label: string }) {
   return (
-    <Link
-      href={href}
-      className="flex flex-col items-center p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
-    >
+    <Link href={href} className="flex flex-col items-center p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
       <span className="text-3xl mb-2">{emoji}</span>
       <span className="text-sm font-medium text-gray-700 text-center">{label}</span>
     </Link>
