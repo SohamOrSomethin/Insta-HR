@@ -14,6 +14,7 @@ export default function RegisterPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [statusMsg, setStatusMsg] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -22,12 +23,22 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setStatusMsg('')
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match!')
       return
     }
     setLoading(true)
+
+    // Show wakeup hint after 4 seconds if still waiting
+    const hintTimer = setTimeout(() => {
+      setStatusMsg('⏳ Waking up the server (free tier) — this can take up to 30 seconds...')
+    }, 4000)
+
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s max
+
       const res = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,18 +48,27 @@ export default function RegisterPage() {
           role: formData.role,
           firstName: formData.firstName,
           lastName: formData.lastName
-        })
+        }),
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
       const data = await res.json()
       if (data.success) {
+        setStatusMsg('✅ Account created! Redirecting...')
         window.location.href = `/auth/verify-otp?userId=${data.userId}&email=${formData.email}`
       } else {
-        setError(data.message)
+        setError(data.message || 'Registration failed')
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        setError('Server took too long to respond. Please try again — it should be awake now.')
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
+    } finally {
+      clearTimeout(hintTimer)
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -61,9 +81,14 @@ export default function RegisterPage() {
           </div>
           <h1 className='text-2xl font-bold text-gray-900 text-center mb-2'>Create your account</h1>
           <p className='text-gray-500 text-center mb-8'>Join 2 million people finding jobs</p>
+
           {error && (
-            <div className='bg-red-50 text-red-600 px-4 py-3 rounded-xl mb-6 text-sm'>{error}</div>
+            <div className='bg-red-50 text-red-600 px-4 py-3 rounded-xl mb-4 text-sm'>{error}</div>
           )}
+          {statusMsg && !error && (
+            <div className='bg-blue-50 text-blue-700 px-4 py-3 rounded-xl mb-4 text-sm'>{statusMsg}</div>
+          )}
+
           <form onSubmit={handleSubmit} className='space-y-5'>
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-2'>I am a...</label>
