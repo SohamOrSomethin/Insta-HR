@@ -28,6 +28,10 @@ const swaggerUi = require('swagger-ui-express');
 
 const app = express();
 
+/* ------------------ TRUST PROXY (required for Railway) ------------------ */
+// Railway sits behind a load balancer — this fixes express-rate-limit and req.ip
+app.set('trust proxy', 1);
+
 /* ------------------ SECURITY ------------------ */
 app.disable('x-powered-by');
 app.use(helmet());
