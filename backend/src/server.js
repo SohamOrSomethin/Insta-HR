@@ -32,19 +32,24 @@ const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
 
-// Allow multiple origins: Vercel URL + localhost for dev
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+// Strip trailing slash from FRONTEND_URL if present
+const rawFrontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = rawFrontend.replace(/\/$/, '');
+
 const allowedOrigins = [
   FRONTEND_URL,
   'http://localhost:3000',
   'http://localhost:3001',
 ];
 
+console.log('✅ Allowed CORS origins:', allowedOrigins);
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    const clean = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(clean)) return callback(null, true);
+    console.warn('🚫 CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
@@ -69,20 +74,15 @@ const authLimiter = rateLimit({
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
-    info: { title: 'InstaHire API', version: '1.0.0', description: 'AI-Powered Job Portal API Documentation' },
-    servers: [{ url: process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:5000', description: 'API server' }],
-    components: {
-      securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }
-    },
+    info: { title: 'InstaHire API', version: '1.0.0' },
+    servers: [{ url: 'https://insta-hr-production.up.railway.app' }],
+    components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } } },
     security: [{ bearerAuth: [] }]
   },
   apis: ['./src/routes/*.js']
 };
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { background: linear-gradient(135deg, #2563eb, #9333ea); }',
-  customSiteTitle: 'InstaHire API Docs'
-}));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api/', apiLimiter);
 app.use('/api/v1/auth/login', authLimiter);
@@ -111,12 +111,7 @@ app.use('/api/v1/admin', adminRoutes);
 
 /* ------------------ HEALTH CHECK ------------------ */
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'InstaHire API is running 🚀',
-    db: sequelize ? 'configured' : 'not configured',
-    env: process.env.NODE_ENV || 'development'
-  });
+  res.json({ success: true, message: 'InstaHire API is running 🚀', env: process.env.NODE_ENV || 'development' });
 });
 
 /* ------------------ 404 HANDLER ------------------ */
@@ -127,10 +122,7 @@ app.use((req, res) => {
 /* ------------------ GLOBAL ERROR HANDLER ------------------ */
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error'
-  });
+  res.status(err.status || 500).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
 /* ------------------ SERVER ------------------ */
@@ -140,25 +132,16 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected');
-  } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
-    console.error('Check DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD env vars on Railway');
-    // Do NOT exit - let server start so Railway doesnt 502
-    // DB-dependent routes will fail gracefully
-  }
-
-  // Always sync models (will fail gracefully if DB is down)
-  try {
     await sequelize.sync({ alter: false });
     console.log('✅ Models synced');
-  } catch (e) {
-    console.error('❌ Model sync failed:', e.message);
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    // Do NOT exit — keep server alive so Railway doesn't 502
   }
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🌍 FRONTEND_URL: ${FRONTEND_URL}`);
-    console.log(`📖 API Docs: http://localhost:${PORT}/api-docs`);
   });
 }
 
