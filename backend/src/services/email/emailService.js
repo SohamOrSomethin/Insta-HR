@@ -1,37 +1,21 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// Port 465 (SSL) is blocked on Render free tier — use 587 (STARTTLS) instead
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // STARTTLS — upgrades after connection
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function verifySMTP() {
-  try {
-    await transporter.verify();
-    console.log('✅ SMTP server ready (Gmail port 587)');
-  } catch (err) {
-    console.error('❌ SMTP connection failed:', err.message);
-  }
-}
-verifySMTP();
+const FROM = process.env.EMAIL_FROM || 'InstaHire <onboarding@resend.dev>';
 
 async function sendMail({ to, subject, html, text }) {
   try {
-    const info = await transporter.sendMail({
-      from: `"InstaHire" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
-      to, subject, html, text
+    const { data, error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject,
+      html,
+      text
     });
-    console.log(`📧 Email sent: ${info.messageId}`);
-    return info;
+    if (error) throw new Error(error.message);
+    console.log(`📧 Email sent via Resend: ${data.id}`);
+    return data;
   } catch (err) {
     console.error('❌ Email send failed:', err.message);
     throw err;
