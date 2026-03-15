@@ -1,5 +1,5 @@
 const { SavedJob, Job, User, JobAlert } = require('../models/index');
-const nodemailer = require('nodemailer');
+const emailService = require('../services/email/emailService');
 
 // ── SAVED JOBS ──
 
@@ -98,13 +98,9 @@ exports.sendJobAlertEmails = async (job) => {
     const alerts = await JobAlert.findAll({ where: { isActive: true } });
     if (!alerts.length) return;
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-    });
+    const FRONTEND = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     for (const alert of alerts) {
-      // Check if job matches alert criteria
       const keywordMatch = !alert.keywords || 
         alert.keywords.split(',').some(k => 
           job.title?.toLowerCase().includes(k.trim().toLowerCase()) ||
@@ -117,43 +113,26 @@ exports.sendJobAlertEmails = async (job) => {
 
       if (keywordMatch && locationMatch && industryMatch && typeMatch) {
         try {
-          await transporter.sendMail({
-            from: '"InstaHire Jobs" <' + process.env.SMTP_USER + '>',
-            to: alert.email,
-            subject: '🔔 New Job Match: ' + job.title + ' at ' + job.companyName,
-            html: `
-              <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb;padding:20px;">
-                <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-                  <h1 style="color:white;margin:0;font-size:24px;">🔔 New Job Alert</h1>
-                  <p style="color:#bfdbfe;margin:8px 0 0;">A job matching your preferences was just posted!</p>
-                </div>
-                <div style="background:white;padding:30px;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                  <h2 style="color:#1e40af;margin:0 0 8px;">${job.title}</h2>
-                  <p style="color:#6b7280;margin:0 0 16px;">🏢 ${job.companyName || 'Company'} &nbsp;•&nbsp; 📍 ${job.location || 'Remote'}</p>
-                  
-                  <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:6px;margin:16px 0;">
-                    <p style="margin:0;color:#1e40af;font-size:14px;">
-                      💼 ${job.jobType || 'Full-time'} &nbsp;•&nbsp; 
-                      💰 ${job.salaryMin ? '₹' + job.salaryMin.toLocaleString() + ' - ₹' + job.salaryMax.toLocaleString() : 'Salary not disclosed'}
-                    </p>
+          await emailService.sendMail ? 
+            emailService.sendMail({
+              to: alert.email,
+              subject: `\uD83D\uDD14 New Job Match: ${job.title} at ${job.companyName}`,
+              text: `A new job matching your alert was posted: ${job.title} at ${job.companyName}`,
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+                  <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:30px;border-radius:12px 12px 0 0;text-align:center">
+                    <h1 style="color:white;margin:0">🔔 New Job Alert</h1>
                   </div>
-
-                  <p style="color:#374151;line-height:1.6;">${(job.description || '').substring(0, 200)}...</p>
-
-                  <a href="http://localhost:3000/jobs/${job.id}" 
-                     style="display:inline-block;background:#2563eb;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;">
-                    View & Apply Now →
-                  </a>
-
-                  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
-                  <p style="color:#9ca3af;font-size:12px;text-align:center;">
-                    You're receiving this because you set up a job alert on InstaHire.<br>
-                    <a href="http://localhost:3000/dashboard" style="color:#6b7280;">Manage your alerts</a>
-                  </p>
-                </div>
-              </div>
-            `,
-          });
+                  <div style="background:white;padding:30px;border-radius:0 0 12px 12px">
+                    <h2 style="color:#1e40af">${job.title}</h2>
+                    <p style="color:#6b7280">🏢 ${job.companyName || 'Company'} &nbsp;•&nbsp; 📍 ${job.location || 'Remote'}</p>
+                    <p style="color:#374151">${(job.description || '').substring(0, 200)}...</p>
+                    <a href="${FRONTEND}/jobs/${job.id}" style="display:inline-block;background:#2563eb;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">
+                      View &amp; Apply Now →
+                    </a>
+                  </div>
+                </div>`
+            }) : Promise.resolve();
           await alert.update({ lastSentAt: new Date() });
         } catch (emailErr) {
           console.error('Failed to send alert to', alert.email, emailErr.message);
