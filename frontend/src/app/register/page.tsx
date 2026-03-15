@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import API_URL from '@/lib/api'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -29,7 +30,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/register', {
+      const res = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,10 +45,7 @@ export default function RegisterPage() {
       const data = await res.json()
 
       if (data.success) {
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('user', JSON.stringify(data.user))
-        // ✅ Goes to OTP verification, not dashboard directly
-        window.location.href = `/auth/verify-otp?userId=${data.user.id}&email=${encodeURIComponent(formData.email)}`
+        window.location.href = `/auth/verify-otp?userId=${data.userId}&email=${encodeURIComponent(formData.email)}`
       } else {
         setError(data.message)
       }
