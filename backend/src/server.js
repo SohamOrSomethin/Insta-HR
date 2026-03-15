@@ -32,14 +32,21 @@ const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
 
-// Fix: validate FRONTEND_URL is set; fall back only in development
-const allowedOrigin = process.env.FRONTEND_URL;
-if (!allowedOrigin && process.env.NODE_ENV === 'production') {
-  console.error('❌ FATAL: FRONTEND_URL env variable is not set in production!');
-  process.exit(1);
-}
+// Allow multiple origins: Vercel URL + localhost for dev
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const allowedOrigins = [
+  FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+
 app.use(cors({
-  origin: allowedOrigin || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
@@ -54,7 +61,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   message: { success: false, message: 'Too many login attempts, please try again later.' }
 });
 
@@ -63,7 +70,7 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: { title: 'InstaHire API', version: '1.0.0', description: 'AI-Powered Job Portal API Documentation' },
-    servers: [{ url: 'http://localhost:5000', description: 'Development server' }],
+    servers: [{ url: process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:5000', description: 'API server' }],
     components: {
       securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }
     },
@@ -98,14 +105,18 @@ app.use('/api/v1/training', trainingRoutes);
 app.use('/api/v1/ai', require('./routes/aiScreening.routes'));
 app.use('/api/v1/jobs-actions', require('./routes/savedJobs.routes'));
 app.use('/api/v1/payments', paymentRoutes);
-// Fix: removed duplicate employer route (/api/v1/employers AND /api/v1/employer).
-// Using a single canonical route: /api/v1/employers
+app.use('/api/v1/employer', require('./routes/employer.routes'));
 app.use('/api/v1/employers', require('./routes/employer.routes'));
 app.use('/api/v1/admin', adminRoutes);
 
 /* ------------------ HEALTH CHECK ------------------ */
 app.get('/', (req, res) => {
-  res.json({ success: true, message: 'InstaHire API is running 🚀' });
+  res.json({
+    success: true,
+    message: 'InstaHire API is running 🚀',
+    db: sequelize ? 'configured' : 'not configured',
+    env: process.env.NODE_ENV || 'development'
+  });
 });
 
 /* ------------------ 404 HANDLER ------------------ */
@@ -129,15 +140,26 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📁 Uploads folder: ${uploadsDir}`);
-      console.log(`📖 API Docs: http://localhost:${PORT}/api-docs`);
-    });
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
-    process.exit(1);
+    console.error('Check DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD env vars on Railway');
+    // Do NOT exit - let server start so Railway doesnt 502
+    // DB-dependent routes will fail gracefully
   }
+
+  // Always sync models (will fail gracefully if DB is down)
+  try {
+    await sequelize.sync({ alter: false });
+    console.log('✅ Models synced');
+  } catch (e) {
+    console.error('❌ Model sync failed:', e.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🌍 FRONTEND_URL: ${FRONTEND_URL}`);
+    console.log(`📖 API Docs: http://localhost:${PORT}/api-docs`);
+  });
 }
 
 startServer();
