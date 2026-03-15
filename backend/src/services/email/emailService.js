@@ -1,27 +1,33 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM || 'InstaHire <onboarding@resend.dev>';
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
-// Verify on startup
-if (!process.env.RESEND_API_KEY) {
-  console.warn('⚠️  RESEND_API_KEY not set — emails will fail');
-} else {
-  console.log('✅ Resend email service ready');
+async function verifySMTP() {
+  try {
+    await transporter.verify();
+    console.log('✅ SMTP server ready (Gmail)');
+  } catch (err) {
+    console.error('❌ SMTP connection failed:', err.message);
+  }
 }
+verifySMTP();
 
 async function sendMail({ to, subject, html, text }) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM,
-      to,
-      subject,
-      html,
-      text
+    const info = await transporter.sendMail({
+      from: `"InstaHire" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
+      to, subject, html, text
     });
-    if (error) throw new Error(error.message);
-    console.log(`📧 Email sent to ${to}: ${data.id}`);
-    return data;
+    console.log(`📧 Email sent: ${info.messageId}`);
+    return info;
   } catch (err) {
     console.error('❌ Email send failed:', err.message);
     throw err;
@@ -94,7 +100,7 @@ exports.sendInterviewInvite = async (email, details) => {
   return sendMail({
     to: email,
     subject: 'Interview Scheduled — InstaHire 📅',
-    text: `Your interview is scheduled at ${details.scheduledAt}`,
+    text: `Your interview is at ${details.scheduledAt}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:linear-gradient(135deg,#7c3aed,#2563eb);padding:30px;text-align:center;border-radius:12px 12px 0 0">
