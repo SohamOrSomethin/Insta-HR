@@ -66,7 +66,6 @@ const apiLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
-// Generous limit during development/testing
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
@@ -119,6 +118,10 @@ app.get('/', (req, res) => {
   res.json({ success: true, message: 'InstaHire API is running 🚀', env: process.env.NODE_ENV || 'development' });
 });
 
+app.get('/api/v1/health', (req, res) => {
+  res.json({ success: true, message: 'OK', uptime: Math.floor(process.uptime()) });
+});
+
 /* ------------------ 404 HANDLER ------------------ */
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
@@ -146,6 +149,14 @@ async function startServer() {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🌍 FRONTEND_URL: ${FRONTEND_URL}`);
+
+    /* ---------- KEEPALIVE: ping self every 14 min to prevent Render sleep ---------- */
+    const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    setInterval(() => {
+      fetch(`${SELF_URL}/api/v1/health`)
+        .then(() => console.log('💓 Keepalive ping sent'))
+        .catch(() => {}); // silent fail
+    }, 14 * 60 * 1000); // every 14 minutes
   });
 }
 
