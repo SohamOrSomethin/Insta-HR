@@ -2,26 +2,30 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
+interface CandidateProfile {
+  headline?: string
+  skills?: string[]
+  yearsOfExperience?: number
+  currentLocation?: string
+  resumeUrl?: string
+}
+
+interface Candidate {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  candidateProfile?: CandidateProfile
+}
+
 interface Application {
   id: string
   status: string
-  coverLetter: string
+  coverLetter?: string
   createdAt: string
   interviewDate?: string
-  candidate?: {
-    id: string
-    email: string
-    firstName: string
-    lastName: string
-    phone: string
-    candidateProfile?: {
-      headline: string
-      skills: string[]
-      yearsOfExperience: number
-      currentLocation: string
-      resumeUrl: string
-    }
-  }
+  candidate?: Candidate
 }
 
 interface Job {
@@ -42,6 +46,8 @@ const STATUS_COLORS: Record<string, string> = {
   hired: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700"
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 export default function EmployerDashboard() {
   const router = useRouter()
@@ -65,7 +71,7 @@ export default function EmployerDashboard() {
   const fetchJobs = async () => {
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch("http://localhost:5000/api/v1/employer/jobs", {
+      const res = await fetch(`${API_URL}/api/v1/employer/jobs`, {
         headers: { Authorization: "Bearer " + token }
       })
       const data = await res.json()
@@ -80,7 +86,7 @@ export default function EmployerDashboard() {
     setApplications([])
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch("http://localhost:5000/api/v1/employer/jobs/" + job.id + "/applications", {
+      const res = await fetch(`${API_URL}/api/v1/employer/jobs/${job.id}/applications`, {
         headers: { Authorization: "Bearer " + token }
       })
       const data = await res.json()
@@ -91,10 +97,10 @@ export default function EmployerDashboard() {
 
   const updateStatus = async (appId: string, status: string) => {
     const token = localStorage.getItem("token")
-    const body: any = { status }
+    const body: Record<string, string> = { status }
     if (status === "interview_scheduled" && interviewDate) body.interviewDate = interviewDate
     try {
-      const res = await fetch("http://localhost:5000/api/v1/employer/applications/" + appId + "/status", {
+      const res = await fetch(`${API_URL}/api/v1/employer/applications/${appId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify(body)
@@ -186,16 +192,16 @@ export default function EmployerDashboard() {
                           {app.candidate?.candidateProfile?.currentLocation && <span>Location: {app.candidate.candidateProfile.currentLocation}</span>}
                           {app.candidate?.phone && <span>Phone: {app.candidate.phone}</span>}
                         </div>
-                        {app.candidate?.candidateProfile?.skills?.length > 0 && (
+                        {(app.candidate?.candidateProfile?.skills?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-1 mb-3">
-                            {app.candidate.candidateProfile.skills.slice(0, 5).map((skill, i) => (
+                            {app.candidate?.candidateProfile?.skills?.slice(0, 5).map((skill, i) => (
                               <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{skill}</span>
                             ))}
                           </div>
                         )}
-                        {app.coverLetter && <p className="text-gray-600 text-sm bg-gray-50 rounded-xl p-3 mb-3 italic">"{app.coverLetter}"</p>}
+                        {app.coverLetter && <p className="text-gray-600 text-sm bg-gray-50 rounded-xl p-3 mb-3 italic">&quot;{app.coverLetter}&quot;</p>}
                         {app.candidate?.candidateProfile?.resumeUrl && (
-                          <a href={"http://localhost:5000" + app.candidate.candidateProfile.resumeUrl} target="_blank" className="text-blue-600 text-sm hover:underline mr-4">View Resume</a>
+                          <a href={`${API_URL}${app.candidate.candidateProfile.resumeUrl}`} target="_blank" className="text-blue-600 text-sm hover:underline mr-4">View Resume</a>
                         )}
                         {app.interviewDate && <p className="text-purple-700 text-sm mt-2">Interview: {new Date(app.interviewDate).toLocaleString()}</p>}
                         <div className="mt-4 flex flex-wrap gap-2">
