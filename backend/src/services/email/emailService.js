@@ -1,20 +1,34 @@
-const { Resend } = require('resend');
+// Email service using Brevo (formerly Sendinblue) REST API
+// No domain verification needed — sends to any email on free tier
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const FROM = process.env.EMAIL_FROM || 'InstaHire <onboarding@resend.dev>';
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@instahire.app';
+const FROM_NAME = 'InstaHire';
 
 async function sendMail({ to, subject, html, text }) {
+  if (!BREVO_API_KEY) {
+    console.warn('⚠️  BREVO_API_KEY not set — skipping email');
+    return;
+  }
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM,
-      to,
-      subject,
-      html,
-      text
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: FROM_NAME, email: FROM_EMAIL },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+        textContent: text
+      })
     });
-    if (error) throw new Error(error.message);
-    console.log(`📧 Email sent via Resend: ${data.id}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Brevo API error');
+    console.log(`📧 Email sent via Brevo: ${data.messageId}`);
     return data;
   } catch (err) {
     console.error('❌ Email send failed:', err.message);
