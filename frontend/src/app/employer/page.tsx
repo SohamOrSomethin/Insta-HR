@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import API_URL from "@/lib/api"
 
 interface CandidateProfile {
   headline?: string
@@ -46,8 +47,6 @@ const STATUS_COLORS: Record<string, string> = {
   hired: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700"
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 export default function EmployerDashboard() {
   const router = useRouter()

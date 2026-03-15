@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import API_URL from '@/lib/api'
 
 export default function SavedJobsPage() {
   const router = useRouter()
@@ -28,7 +29,7 @@ export default function SavedJobsPage() {
 
   const fetchSavedJobs = async (token: string) => {
     try {
-      const res = await fetch('http://localhost:5000/api/v1/jobs-actions/saved', {
+      const res = await fetch(`${API_URL}/api/v1/jobs-actions/saved`, {
         headers: { Authorization: 'Bearer ' + token }
       })
       const data = await res.json()
@@ -39,7 +40,7 @@ export default function SavedJobsPage() {
 
   const fetchAlerts = async (token: string) => {
     try {
-      const res = await fetch('http://localhost:5000/api/v1/jobs-actions/alerts', {
+      const res = await fetch(`${API_URL}/api/v1/jobs-actions/alerts`, {
         headers: { Authorization: 'Bearer ' + token }
       })
       const data = await res.json()
@@ -49,7 +50,7 @@ export default function SavedJobsPage() {
 
   const unsaveJob = async (jobId: number) => {
     const token = localStorage.getItem('token')
-    await fetch('http://localhost:5000/api/v1/jobs-actions/save/' + jobId, {
+    await fetch(`${API_URL}/api/v1/jobs-actions/save/` + jobId, {
       method: 'POST', headers: { Authorization: 'Bearer ' + token }
     })
     setSavedJobs(prev => prev.filter(s => s.jobId !== jobId))
@@ -63,7 +64,7 @@ export default function SavedJobsPage() {
     const token = localStorage.getItem('token')
     const userData = JSON.parse(localStorage.getItem('user') || '{}')
     try {
-      const res = await fetch('http://localhost:5000/api/v1/jobs-actions/alerts', {
+      const res = await fetch(`${API_URL}/api/v1/jobs-actions/alerts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ ...alertForm, email: alertForm.email || userData.email })
@@ -81,7 +82,7 @@ export default function SavedJobsPage() {
 
   const deleteAlert = async (id: number) => {
     const token = localStorage.getItem('token')
-    await fetch('http://localhost:5000/api/v1/jobs-actions/alerts/' + id, {
+    await fetch(`${API_URL}/api/v1/jobs-actions/alerts/` + id, {
       method: 'DELETE', headers: { Authorization: 'Bearer ' + token }
     })
     setAlerts(prev => prev.filter(a => a.id !== id))
@@ -89,7 +90,7 @@ export default function SavedJobsPage() {
 
   const toggleAlert = async (id: number) => {
     const token = localStorage.getItem('token')
-    const res = await fetch('http://localhost:5000/api/v1/jobs-actions/alerts/' + id + '/toggle', {
+    const res = await fetch(`${API_URL}/api/v1/jobs-actions/alerts/` + id + '/toggle', {
       method: 'PATCH', headers: { Authorization: 'Bearer ' + token }
     })
     const data = await res.json()
@@ -109,7 +110,6 @@ export default function SavedJobsPage() {
   return (
     <main className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-4xl mx-auto px-6 py-10">
-
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Saved Jobs</h1>
@@ -120,14 +120,9 @@ export default function SavedJobsPage() {
             🔔 + New Alert
           </button>
         </div>
-
         {message && (
-          <div className="bg-green-50 text-green-700 border border-green-200 px-4 py-3 rounded-xl mb-6 font-medium">
-            {message}
-          </div>
+          <div className="bg-green-50 text-green-700 border border-green-200 px-4 py-3 rounded-xl mb-6 font-medium">{message}</div>
         )}
-
-        {/* Create Alert Modal */}
         {showAlertForm && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
@@ -136,7 +131,6 @@ export default function SavedJobsPage() {
                 <button onClick={() => setShowAlertForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
               </div>
               <p className="text-sm text-gray-500 mb-4">Get email notifications when new matching jobs are posted.</p>
-
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
@@ -176,22 +170,15 @@ export default function SavedJobsPage() {
                   <p className="text-xs text-gray-400 mt-1">Leave blank to use your account email</p>
                 </div>
               </div>
-
               <div className="flex gap-3 mt-5">
                 <button onClick={() => setShowAlertForm(false)}
-                  className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium text-sm">
-                  Cancel
-                </button>
+                  className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium text-sm">Cancel</button>
                 <button onClick={createAlert}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm">
-                  Create Alert
-                </button>
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm">Create Alert</button>
               </div>
             </div>
           </div>
         )}
-
-        {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button onClick={() => setActiveTab('saved')}
             className={"px-5 py-2 rounded-xl font-medium text-sm transition-colors " + (activeTab === 'saved' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400')}>
@@ -202,8 +189,6 @@ export default function SavedJobsPage() {
             🔔 Job Alerts ({alerts.length})
           </button>
         </div>
-
-        {/* ── SAVED JOBS TAB ── */}
         {activeTab === 'saved' && (
           <div className="space-y-4">
             {savedJobs.length === 0 ? (
@@ -211,9 +196,7 @@ export default function SavedJobsPage() {
                 <div className="text-5xl mb-4">🔖</div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">No saved jobs yet</h3>
                 <p className="text-gray-500 mb-4">Browse jobs and click the bookmark icon to save them here.</p>
-                <Link href="/jobs" className="px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 inline-block">
-                  Browse Jobs
-                </Link>
+                <Link href="/jobs" className="px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 inline-block">Browse Jobs</Link>
               </div>
             ) : savedJobs.map(saved => (
               <div key={saved.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
@@ -231,22 +214,14 @@ export default function SavedJobsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 ml-4">
-                    <Link href={'/jobs/' + saved.job?.id}
-                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">
-                      Apply
-                    </Link>
-                    <button onClick={() => unsaveJob(saved.jobId)}
-                      className="px-3 py-2 border border-gray-200 text-gray-500 text-sm rounded-xl hover:border-red-300 hover:text-red-500 transition-colors">
-                      🗑
-                    </button>
+                    <Link href={'/jobs/' + saved.job?.id} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">Apply</Link>
+                    <button onClick={() => unsaveJob(saved.jobId)} className="px-3 py-2 border border-gray-200 text-gray-500 text-sm rounded-xl hover:border-red-300 hover:text-red-500 transition-colors">🗑</button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        {/* ── ALERTS TAB ── */}
         {activeTab === 'alerts' && (
           <div className="space-y-4">
             {alerts.length === 0 ? (
@@ -254,10 +229,7 @@ export default function SavedJobsPage() {
                 <div className="text-5xl mb-4">🔔</div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">No job alerts yet</h3>
                 <p className="text-gray-500 mb-4">Create an alert and get emailed when matching jobs are posted.</p>
-                <button onClick={() => setShowAlertForm(true)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700">
-                  Create First Alert
-                </button>
+                <button onClick={() => setShowAlertForm(true)} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700">Create First Alert</button>
               </div>
             ) : alerts.map(alert => (
               <div key={alert.id} className={"bg-white rounded-2xl p-5 border shadow-sm " + (alert.isActive ? 'border-gray-100' : 'border-gray-200 opacity-60')}>
@@ -265,9 +237,7 @@ export default function SavedJobsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={"w-2 h-2 rounded-full " + (alert.isActive ? 'bg-green-500' : 'bg-gray-400')}></span>
-                      <span className={"text-xs font-medium " + (alert.isActive ? 'text-green-600' : 'text-gray-400')}>
-                        {alert.isActive ? 'Active' : 'Paused'}
-                      </span>
+                      <span className={"text-xs font-medium " + (alert.isActive ? 'text-green-600' : 'text-gray-400')}>{alert.isActive ? 'Active' : 'Paused'}</span>
                     </div>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {alert.keywords && <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">🔍 {alert.keywords}</span>}
@@ -283,15 +253,11 @@ export default function SavedJobsPage() {
                       className={"px-3 py-1.5 text-xs rounded-xl font-medium border transition-colors " + (alert.isActive ? 'border-yellow-300 text-yellow-600 hover:bg-yellow-50' : 'border-green-300 text-green-600 hover:bg-green-50')}>
                       {alert.isActive ? '⏸ Pause' : '▶ Resume'}
                     </button>
-                    <button onClick={() => deleteAlert(alert.id)}
-                      className="px-3 py-1.5 text-xs rounded-xl font-medium border border-red-200 text-red-500 hover:bg-red-50">
-                      🗑 Delete
-                    </button>
+                    <button onClick={() => deleteAlert(alert.id)} className="px-3 py-1.5 text-xs rounded-xl font-medium border border-red-200 text-red-500 hover:bg-red-50">🗑 Delete</button>
                   </div>
                 </div>
               </div>
             ))}
-
             {alerts.length > 0 && (
               <button onClick={() => setShowAlertForm(true)}
                 className="w-full py-4 border-2 border-dashed border-gray-300 text-gray-500 rounded-2xl hover:border-blue-400 hover:text-blue-600 transition-colors font-medium">
