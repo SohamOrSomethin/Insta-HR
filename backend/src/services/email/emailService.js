@@ -1,34 +1,33 @@
-// Email service using Brevo (formerly Sendinblue) REST API
-// No domain verification needed — sends to any email on free tier
+// Email service using Mailtrap Transactional API
+// Free tier: 1000 emails/month, sends to any inbox, no domain or phone needed
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const MAILTRAP_TOKEN = process.env.MAILTRAP_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@instahire.app';
 const FROM_NAME = 'InstaHire';
 
 async function sendMail({ to, subject, html, text }) {
-  if (!BREVO_API_KEY) {
-    console.warn('⚠️  BREVO_API_KEY not set — skipping email');
+  if (!MAILTRAP_TOKEN) {
+    console.warn('⚠️  MAILTRAP_API_KEY not set — skipping email');
     return;
   }
   try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    const res = await fetch('https://send.api.mailtrap.io/api/send', {
       method: 'POST',
       headers: {
-        'accept': 'application/json',
-        'api-key': BREVO_API_KEY,
-        'content-type': 'application/json'
+        'Authorization': `Bearer ${MAILTRAP_TOKEN}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        sender: { name: FROM_NAME, email: FROM_EMAIL },
+        from: { email: FROM_EMAIL, name: FROM_NAME },
         to: [{ email: to }],
         subject,
-        htmlContent: html,
-        textContent: text
+        html,
+        text
       })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Brevo API error');
-    console.log(`📧 Email sent via Brevo: ${data.messageId}`);
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    console.log(`📧 Email sent via Mailtrap: ${data.message_ids?.[0]}`);
     return data;
   } catch (err) {
     console.error('❌ Email send failed:', err.message);
