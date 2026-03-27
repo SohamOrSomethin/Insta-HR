@@ -28,7 +28,7 @@ const swaggerUi = require('swagger-ui-express');
 
 const app = express();
 
-/* ------------------ TRUST PROXY (required for Railway) ------------------ */
+/* ------------------ TRUST PROXY ------------------ */
 app.set('trust proxy', 1);
 
 /* ------------------ SECURITY ------------------ */
@@ -50,7 +50,10 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     const clean = origin.replace(/\/$/, '');
+    // Allow exact matches
     if (allowedOrigins.includes(clean)) return callback(null, true);
+    // Allow all Vercel preview deployments for this project
+    if (clean.endsWith('.vercel.app')) return callback(null, true);
     console.warn('🚫 CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -79,7 +82,7 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: { title: 'InstaHire API', version: '1.0.0' },
-    servers: [{ url: 'https://insta-hr-production.up.railway.app' }],
+    servers: [{ url: 'https://insta-hr.onrender.com' }],
     components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } } },
     security: [{ bearerAuth: [] }]
   },
@@ -155,8 +158,8 @@ async function startServer() {
     setInterval(() => {
       fetch(`${SELF_URL}/api/v1/health`)
         .then(() => console.log('💓 Keepalive ping sent'))
-        .catch(() => {}); // silent fail
-    }, 14 * 60 * 1000); // every 14 minutes
+        .catch(() => {});
+    }, 14 * 60 * 1000);
   });
 }
 
