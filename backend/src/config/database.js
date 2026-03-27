@@ -3,10 +3,10 @@ require('dotenv').config();
 
 let connectionString = process.env.DATABASE_URL;
 
-// Neon appends ?sslmode=require which conflicts with Sequelize dialectOptions
-// Strip it and let dialectOptions handle SSL instead
-if (connectionString) {
-  connectionString = connectionString.replace(/[?&]sslmode=[^&]*/g, '').replace(/\?$/, '');
+// Neon appends query params like ?sslmode=require&channel_binding=require
+// Sequelize handles SSL via dialectOptions, so strip everything after ?
+if (connectionString && connectionString.includes('?')) {
+  connectionString = connectionString.split('?')[0];
 }
 
 let sequelize;
